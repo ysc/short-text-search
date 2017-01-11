@@ -1,0 +1,12 @@
+.settings/
+.classpath
+.project
+target/
+logs/
+data/
+.idea/
+short-text-search.iml
+short-text-search.ipr
+short-text-search.iws
+.gradle/
+build/

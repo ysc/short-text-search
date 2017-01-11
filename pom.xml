@@ -1,0 +1,121 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.apdplat</groupId>
+    <artifactId>short-text-search</artifactId>
+    <packaging>war</packaging>
+
+    <version>1.0-SNAPSHOT</version>
+    <name>short-text-search</name>
+    <url>https://github.com/ysc/short-text-search</url>
+
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-web-api</artifactId>
+            <version>${javaee-web-api.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <!--  SLF4J日志框架API  -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j-api.version}</version>
+        </dependency>
+        <!-- LOGBACK日志实现提供者 -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback-classic.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- 拦截 apache commons logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jcl-over-slf4j</artifactId>
+            <version>${jcl-over-slf4j.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- 拦截 jdk util logging -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jul-to-slf4j</artifactId>
+            <version>${jul-to-slf4j.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- 拦截 log4j -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>log4j-over-slf4j</artifactId>
+            <version>${log4j-over-slf4j.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- 日志结束-->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${commons-lang.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.belerweb</groupId>
+            <artifactId>pinyin4j</artifactId>
+            <version>${pinyin4j.version}</version>
+        </dependency>
+    </dependencies>
+
+    <properties>
+        <java.version>1.8</java.version>
+        <junit.version>4.12</junit.version>
+        <javaee-web-api.version>7.0</javaee-web-api.version>
+        <slf4j-api.version>1.7.20</slf4j-api.version>
+        <logback-classic.version>1.1.7</logback-classic.version>
+        <log4j-over-slf4j.version>1.7.12</log4j-over-slf4j.version>
+        <jul-to-slf4j.version>1.7.20</jul-to-slf4j.version>
+        <jcl-over-slf4j.version>1.7.20</jcl-over-slf4j.version>
+        <commons-lang.version>3.4</commons-lang.version>
+        <pinyin4j.version>2.5.1</pinyin4j.version>
+        <kafka.version>0.8.2.1</kafka.version>
+        <jackson.version>2.7.3</jackson.version>
+        <!-- 数据库驱动 -->
+        <mysql.version>5.1.18</mysql.version>
+
+        <jetty.version>9.3.8.v20160314</jetty.version>
+        <sonar-maven3-plugin.version>3.5</sonar-maven3-plugin.version>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-maven-plugin</artifactId>
+                <version>${jetty.version}</version>
+            </plugin>
+            <!--  运行 mvn sonar:sonar 可将项目发布给质量管理平台-->
+            <plugin>
+                <groupId>org.codehaus.sonar</groupId>
+                <artifactId>sonar-maven3-plugin</artifactId>
+                <version>${sonar-maven3-plugin.version}</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

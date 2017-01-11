@@ -1,0 +1,17 @@
+
+#最大NGRAM
+maxNgram=6
+#搜索词长度限制
+search.word.length.limit=30
+#TOPN长度限制
+topn.length.limit=1000
+#高亮前缀
+highlight.prefix=<font color='red'>
+#高亮后缀
+highlight.suffix=</font>
+#最大并发搜索
+search.max.concurrent=1000
+
+#cache
+cache.enabled=true
+max.cache.size=1000
