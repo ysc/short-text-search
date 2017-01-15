@@ -16,7 +16,7 @@ public class ShortTextResourceTest {
     public void testLoadShortText() throws Exception {
         Map<Integer, Document> shortText = ShortTextResource.loadShortText();
         int actualValue = shortText.size();
-        int expectedValue = 90490;
+        int expectedValue = 90488;
         assertEquals(expectedValue, actualValue);
     }
 }
