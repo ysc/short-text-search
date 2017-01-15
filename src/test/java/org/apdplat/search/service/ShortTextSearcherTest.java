@@ -81,7 +81,7 @@ public class ShortTextSearcherTest {
         shortTextSearcher.index(ShortTextResource.loadShortText());
         List<Document> actualValue = shortTextSearcher.search("深圳万科", 1).getDocuments();
         assertEquals(1, actualValue.size());
-        long expectedId = 65319;
+        long expectedId = 65317;
         assertEquals(expectedId, actualValue.get(0).getId());
         String expectedName = "<font color='red'>深圳万科</font>";
         assertEquals(expectedName, actualValue.get(0).getValue());
@@ -93,7 +93,8 @@ public class ShortTextSearcherTest {
 
     @Test
     public void search2() throws Exception {
-        ShortTextSearcher shortTextSearcher = new ShortTextSearcher(6);
+        // 不启用搜索结果缓存功能
+        ShortTextSearcher shortTextSearcher = new ShortTextSearcher(6, false);
 
         List<Document> actualValue = shortTextSearcher.search("杨尚川历险记", 1, false).getDocuments();
         assertEquals(0, actualValue.size());
@@ -103,6 +104,7 @@ public class ShortTextSearcherTest {
         document.setValue("杨尚川历险记");
 
         shortTextSearcher.createIndex(document);
+        shortTextSearcher.saveIndex();
 
         actualValue = shortTextSearcher.search("杨尚川历险记", 1, false).getDocuments();
         assertEquals(1, actualValue.size());
@@ -113,7 +115,7 @@ public class ShortTextSearcherTest {
 
         shortTextSearcher.deleteIndex(document.getId());
 
-        actualValue = shortTextSearcher.search("杨尚川历险记", 1).getDocuments();
+        actualValue = shortTextSearcher.search("杨尚川历险记", 1, false).getDocuments();
         assertEquals(0, actualValue.size());
     }
 }
