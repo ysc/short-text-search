@@ -62,10 +62,15 @@ public class ShortTextSearcher {
 
     private int maxNgram = 6;
 
-    private static final boolean cacheEnabled = ConfUtils.getBoolean("cache.enabled", true);
+    private boolean cacheEnabled = ConfUtils.getBoolean("cache.enabled", true);
     private ConcurrentLRUCache<String, SearchResult> cache = null;
 
     public ShortTextSearcher(int maxNgram){
+        this(maxNgram, true);
+    }
+
+    public ShortTextSearcher(int maxNgram, boolean cacheEnabled){
+        this.cacheEnabled = cacheEnabled;
         if(cacheEnabled) {
             cache = new ConcurrentLRUCache<>(ConfUtils.getInt("max.cache.size", 1000));
         }
