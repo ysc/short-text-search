@@ -3,4 +3,5 @@ language: java
 jdk:
   - oraclejdk8
 
-mvn -DjvmArgs="-Xmx5g -Xms1g" test -B
+before_install:
+  - export MAVEN_OPTS="-Xmx5g -Xms1g $MAVEN_OPTS"
