@@ -148,3 +148,5 @@
 
     5. 分析每一次搜索的耗时情况, 分析命令如下:
     cat  logs/short_text_search_logback* | grep 搜索接口总耗时 | awk -F ' - ' '{print $2}' |  awk '{print $4,$1}' > search_performance.txt
+
+[https://travis-ci.org/ysc/short-text-search](https://travis-ci.org/ysc/short-text-search)
