@@ -10,3 +10,8 @@ short-text-search.ipr
 short-text-search.iws
 .gradle/
 build/
+document.txt
+index_id_to_document_id.txt
+invert_index.txt
+invert_index_length_status.txt
+p
