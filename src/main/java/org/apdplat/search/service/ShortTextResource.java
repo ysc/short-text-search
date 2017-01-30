@@ -2,6 +2,7 @@ package org.apdplat.search.service;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apdplat.search.model.Document;
+import org.apdplat.search.utils.ConfUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +20,8 @@ public class ShortTextResource {
     private static final Map<Integer, Document> DOCUMENT_MAP = new HashMap<>();
 
     static {
-        try(BufferedReader reader = new BufferedReader(new InputStreamReader(ShortTextResource.class.getResourceAsStream("/short_text.txt")))) {
+        String resourcePath = ConfUtils.get("short.text.classpath", "/short_text.txt");
+        try(BufferedReader reader = new BufferedReader(new InputStreamReader(ShortTextResource.class.getResourceAsStream(resourcePath)))) {
             int id = 1;
             String line;
             while ((line = reader.readLine()) != null) {
@@ -38,7 +40,7 @@ public class ShortTextResource {
                 }
             }
         }catch (Throwable e){
-            LOGGER.error("解析数据出错", e);
+            LOGGER.error("解析数据出错, resourcePath: "+resourcePath, e);
         }
     }
 
