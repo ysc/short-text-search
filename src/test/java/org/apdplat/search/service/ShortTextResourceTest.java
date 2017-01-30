@@ -1,6 +1,8 @@
 package org.apdplat.search.service;
 
 import org.apdplat.search.model.Document;
+import org.apdplat.search.utils.ConfUtils;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Map;
@@ -12,11 +14,16 @@ import static junit.framework.TestCase.assertEquals;
  */
 public class ShortTextResourceTest {
 
+    @BeforeClass
+    public static void init(){
+        ConfUtils.set("short.text.classpath", "/test_short_text.txt");
+    }
+
     @Test
     public void testLoadShortText() throws Exception {
         Map<Integer, Document> shortText = ShortTextResource.loadShortText();
         int actualValue = shortText.size();
-        int expectedValue = 90488;
+        int expectedValue = 4;
         assertEquals(expectedValue, actualValue);
     }
 }

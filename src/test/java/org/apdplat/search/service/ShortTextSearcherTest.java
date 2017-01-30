@@ -1,6 +1,8 @@
 package org.apdplat.search.service;
 
 import org.apdplat.search.model.Document;
+import org.apdplat.search.utils.ConfUtils;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.List;
@@ -11,6 +13,12 @@ import static org.junit.Assert.*;
  * Created by ysc on 1/8/17.
  */
 public class ShortTextSearcherTest {
+
+    @BeforeClass
+    public static void init(){
+        ConfUtils.set("short.text.classpath", "/test_short_text.txt");
+    }
+
     @Test
     public void tokenize() throws Exception {
         ShortTextSearcher shortTextSearcher = new ShortTextSearcher(6);
@@ -79,15 +87,22 @@ public class ShortTextSearcherTest {
     public void search() throws Exception {
         ShortTextSearcher shortTextSearcher = new ShortTextSearcher(3);
         shortTextSearcher.index(ShortTextResource.loadShortText());
-        List<Document> actualValue = shortTextSearcher.search("深圳万科", 1).getDocuments();
+        search(shortTextSearcher, "深圳万科", 1);
+        search(shortTextSearcher, "阿里巴巴", 2);
+        search(shortTextSearcher, "百度", 3);
+        search(shortTextSearcher, "腾讯", 4);
+    }
+
+    private void search(ShortTextSearcher shortTextSearcher, String keyword, int id){
+        List<Document> actualValue = shortTextSearcher.search(keyword, 1).getDocuments();
         assertEquals(1, actualValue.size());
-        long expectedId = 65317;
+        long expectedId = id;
         assertEquals(expectedId, actualValue.get(0).getId());
-        String expectedName = "<font color='red'>深圳万科</font>";
+        String expectedName = "<font color='red'>"+keyword+"</font>";
         assertEquals(expectedName, actualValue.get(0).getValue());
 
-        actualValue = shortTextSearcher.search("深圳万科", 1, false).getDocuments();
-        expectedName = "深圳万科";
+        actualValue = shortTextSearcher.search(keyword, 1, false).getDocuments();
+        expectedName = keyword;
         assertEquals(expectedName, actualValue.get(0).getValue());
     }
 

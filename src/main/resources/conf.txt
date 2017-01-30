@@ -15,3 +15,6 @@ search.max.concurrent=1000
 #cache
 cache.enabled=true
 max.cache.size=1000
+
+#short text resources
+short.text.classpath=/short_text.txt
