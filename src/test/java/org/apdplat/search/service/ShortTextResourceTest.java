@@ -1,8 +1,6 @@
 package org.apdplat.search.service;
 
 import org.apdplat.search.model.Document;
-import org.apdplat.search.utils.ConfUtils;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.Map;
@@ -13,11 +11,6 @@ import static junit.framework.TestCase.assertEquals;
  * Created by ysc on 1/8/17.
  */
 public class ShortTextResourceTest {
-
-    @BeforeClass
-    public static void init(){
-        ConfUtils.set("short.text.classpath", "/test_short_text.txt");
-    }
 
     @Test
     public void testLoadShortText() throws Exception {

@@ -1,23 +1,16 @@
 package org.apdplat.search.service;
 
 import org.apdplat.search.model.Document;
-import org.apdplat.search.utils.ConfUtils;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Created by ysc on 1/8/17.
  */
 public class ShortTextSearcherTest {
-
-    @BeforeClass
-    public static void init(){
-        ConfUtils.set("short.text.classpath", "/test_short_text.txt");
-    }
 
     @Test
     public void tokenize() throws Exception {
