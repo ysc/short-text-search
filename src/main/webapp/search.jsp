@@ -88,7 +88,7 @@
         response.setContentType("application/json;charset=UTF-8");
         response.setHeader("Access-Control-Allow-Origin", "*");
         long start = System.currentTimeMillis();
-        SearchResult searchResult = shortTextSearcher.search(keyWords, topN, highlight);
+        SearchResult searchResult = shortTextSearcher.search(keyWords, topN, highlight, detail);
         List<Document> documents = searchResult.getDocuments();
         long cost = System.currentTimeMillis() - start;
         shortTextSearcher.getLogger().info("{} 搜索接口总耗时: {} {}", cost, TimeUtils.getTimeDes(cost), searchResult.getIdentity());
