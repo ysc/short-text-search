@@ -1,22 +1,20 @@
 package org.apdplat.search.model;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.net.URLEncoder;
+import java.util.Objects;
 
 /**
  * Created by ysc on 1/8/17.
  */
 public class Document implements Comparable{
-    private int id;
-    private String value;
-    private Set<String> terms = new HashSet<>();
+    private String id;
+    private String value="";
     private int score;
 
 
     public Document(){}
 
-    public Document(int id, String value) {
+    public Document(String id, String value) {
         this.id = id;
         this.value = value;
     }
@@ -25,16 +23,15 @@ public class Document implements Comparable{
         Document document = new Document();
         document.id = id;
         document.value = value;
-        document.terms = terms;
         document.score = 0;
         return document;
     }
 
-    public int getId() {
+    public String getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -44,14 +41,6 @@ public class Document implements Comparable{
 
     public void setValue(String value) {
         this.value = value;
-    }
-
-    public Set<String> getTerms() {
-        return terms;
-    }
-
-    public void addTerms(List<String> terms) {
-        this.terms.addAll(terms);
     }
 
     public int getScore() {
@@ -75,7 +64,7 @@ public class Document implements Comparable{
 
     @Override
     public int hashCode() {
-        return (int) (id ^ (id >>> 32));
+        return Objects.hash(id);
     }
 
     @Override
@@ -83,13 +72,16 @@ public class Document implements Comparable{
         return "Document{" +
                 "id=" + id +
                 ", value='" + value + '\'' +
-                ", terms=" + terms +
                 ", score=" + score +
                 '}';
     }
 
     @Override
     public int compareTo(Object o) {
-        return Integer.valueOf(id).compareTo(((Document)o).getId());
+        return id.compareTo(((Document)o).getId());
+    }
+
+    public static void main(String[] args) {
+        System.out.println(URLEncoder.encode("晓宇"));
     }
 }

@@ -23,11 +23,6 @@
     boolean highlight = "true".equals(request.getParameter("highlight"));
     String keyWords = request.getParameter("keyWords") == null ? "深圳万科" : request.getParameter("keyWords");
     String id = request.getParameter("id");
-    if("true".equals(request.getParameter("explain")) && id != null){
-        String explain = shortTextSearcher.explain(keyWords, Integer.parseInt(id)).replace("\n", "<br/>").replace("\t", "&nbsp&nbsp&nbsp&nbsp");
-        out.println(explain);
-        return;
-    }
     int topN = 100;
     try{
         topN = Integer.parseInt(request.getParameter("topN"));

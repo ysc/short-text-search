@@ -9,8 +9,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apdplat.search.model.Document;
 import org.apdplat.search.model.Query;
 import org.apdplat.search.model.SearchResult;
+import org.apdplat.search.mysql.VisitorSource;
 import org.apdplat.search.utils.ConcurrentLRUCache;
 import org.apdplat.search.utils.ConfUtils;
+import org.apdplat.search.utils.MySQLUtils;
 import org.apdplat.search.utils.TimeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +23,7 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,9 +46,8 @@ public class ShortTextSearcher {
 
     private AtomicInteger indexIdGenerator = new AtomicInteger();
     private Map<String, Set<Integer>> INVERTED_INDEX = new ConcurrentHashMap<>();
-    private Map<Integer, Integer> INDEX_TO_DOCUMENT = new ConcurrentHashMap<>();
-    private Map<Integer, Integer> DOCUMENT_TO_INDEX = new ConcurrentHashMap<>();
-    private Map<Integer, Document> DOCUMENT = new ConcurrentHashMap<>();
+    private Map<Integer, String> INDEX_TO_DOCUMENT = new ConcurrentHashMap<>();
+    private Map<String, Integer> DOCUMENT_TO_INDEX = new ConcurrentHashMap<>();
     private AtomicLong indexTotalCost =new AtomicLong();
 
     private Set<String> charPinYin = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -62,11 +64,12 @@ public class ShortTextSearcher {
 
     private int maxNgram = 6;
 
-    private boolean cacheEnabled = ConfUtils.getBoolean("cache.enabled", true);
+    private static boolean cacheEnabled = ConfUtils.getBoolean("cache.enabled", true);
+    private static boolean pinyinEnable = ConfUtils.getBoolean("pinyin.enabled", true);
     private ConcurrentLRUCache<String, SearchResult> cache = null;
 
     public ShortTextSearcher(int maxNgram){
-        this(maxNgram, true);
+        this(maxNgram, cacheEnabled);
     }
 
     public ShortTextSearcher(int maxNgram, boolean cacheEnabled){
@@ -80,6 +83,7 @@ public class ShortTextSearcher {
             LOGGER.error("指定的参数maxNgram: {} 超出范围(1,6], 使用默认值: {}", maxNgram, this.maxNgram);
         }
         LOGGER.info("maxNgram: {}", this.maxNgram);
+        LOGGER.info("cacheEnabled: {}", this.cacheEnabled);
         LOGGER.info("搜索词长度限制: {}", SEARCH_WORD_LENGTH_LIMIT);
         LOGGER.info("topN长度限制: {}", TOPN_LENGTH_LIMIT);
     }
@@ -92,7 +96,6 @@ public class ShortTextSearcher {
         INVERTED_INDEX.clear();
         INDEX_TO_DOCUMENT.clear();
         DOCUMENT_TO_INDEX.clear();
-        DOCUMENT.clear();
         charPinYin.clear();
     }
 
@@ -100,7 +103,6 @@ public class ShortTextSearcher {
         long start = System.currentTimeMillis();
         saveInvertIndex(INVERTED_INDEX);
         saveIndexIdDocumentIdMapping(INDEX_TO_DOCUMENT);
-        saveDocument(DOCUMENT);
         LOGGER.info("保存索引耗时: {}", TimeUtils.getTimeDes(System.currentTimeMillis()-start));
     }
 
@@ -124,9 +126,6 @@ public class ShortTextSearcher {
                             case "/index_id_to_document_id.txt":
                                 loadIndexIdDocumentIdMapping(file);
                                 break;
-                            case "/document.txt":
-                                loadDocument(file);
-                                break;
                         }
                         return FileVisitResult.CONTINUE;
                     }
@@ -139,7 +138,7 @@ public class ShortTextSearcher {
         LOGGER.info("加载索引耗时: {}", TimeUtils.getTimeDes(System.currentTimeMillis()-start));
     }
 
-    private void saveDocument(Map<Integer, Document> documentMap){
+    private void saveDocument(Map<String, Document> documentMap){
         try(BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("document.txt")))){
             documentMap.keySet().stream().sorted().forEach(documentId->{
                 Document document = documentMap.get(documentId);
@@ -156,38 +155,7 @@ public class ShortTextSearcher {
             LOGGER.error("save document failed", e);
         }
     }
-    private void loadDocument(Path file){
-        try (Stream<String> stream = Files.lines(file)) {
-            stream.forEach(line->{
-                try{
-                    String[] attr = line.split("=");
-                    if(attr == null || attr.length < 2){
-                        LOGGER.info("document corrupted! {}", line);
-                        return;
-                    }
-                    StringBuilder value = new StringBuilder();
-                    for(int i=1; i<attr.length; i++){
-                        value.append(attr[i]);
-                    }
-                    int documentId = Integer.parseInt(attr[0]);
-                    String documentValue = value.toString();
-                    if(StringUtils.isBlank(documentValue)){
-                        LOGGER.info("document value corrupted! {}", line);
-                        return;
-                    }
-                    Document document = new Document();
-                    document.setId(documentId);
-                    document.setValue(documentValue);
-                    DOCUMENT.put(documentId, document);
-                }catch (Exception e){
-                    LOGGER.error("load document failed! "+line, e);
-                }
-            });
-        }catch (Exception e){
-            LOGGER.error("load document failed! "+file, e);
-        }
-    }
-    private void saveIndexIdDocumentIdMapping(Map<Integer, Integer> indexIdDocumentIdMapping){
+    private void saveIndexIdDocumentIdMapping(Map<Integer, String> indexIdDocumentIdMapping){
         try(BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("index_id_to_document_id.txt")))){
             indexIdDocumentIdMapping.keySet().stream().sorted().forEach(indexId->{
                 try {
@@ -211,7 +179,7 @@ public class ShortTextSearcher {
                         return;
                     }
                     int indexId = Integer.parseInt(attr[0]);
-                    int documentId = Integer.parseInt(attr[1]);
+                    String documentId = attr[1];
                     INDEX_TO_DOCUMENT.put(indexId, documentId);
                     DOCUMENT_TO_INDEX.put(documentId, indexId);
                 }catch (Exception e){
@@ -314,10 +282,7 @@ public class ShortTextSearcher {
     }
     public String getIndexStatus(){
         StringBuilder status = new StringBuilder();
-        status.append("索引文档数: ")
-                .append(DOCUMENT.size())
-                .append("\n")
-                .append("索引耗时: ")
+        status.append("索引耗时: ")
                 .append(TimeUtils.getTimeDes(indexTotalCost.get()))
                 .append("\n")
                 .append("TERM数: ")
@@ -369,89 +334,6 @@ public class ShortTextSearcher {
 
     public static int getTopNLengthLimit() {
         return TOPN_LENGTH_LIMIT;
-    }
-
-    public String explain(String keyWords, int documentId){
-        long start = System.currentTimeMillis();
-        Query query = parse(keyWords);
-        LOGGER.info("查询解析耗时: {}", TimeUtils.getTimeDes(System.currentTimeMillis()-start));
-        if(query.isEmpty()){
-            return "查询解析后为空";
-        }
-        LOGGER.info("查询结构: {}", query.getKeyWordTerms());
-
-        Document document = DOCUMENT.get(documentId);
-        if(document == null){
-            return "没有ID为 "+documentId+" 的文档";
-        }
-        LOGGER.info("解释搜索关键词: {} 和文档: {} 的评分公式", keyWords, document.getValue());
-        StringBuilder explain = new StringBuilder();
-        explain.append("搜索词[").append(keyWords).append("]切分如下:\n");
-        int i = 1;
-        for(String item : query.getKeyWordTerms()){
-            explain.append("\t").append(i++).append(". ").append(item).append("\n");
-        }
-        String value = document.getValue();
-        List<String> documentTerms = value.length() == 1 ? Arrays.asList(value, getAcronymPinYin(value), getFullPinYin(value)) : tokenize(value);
-        explain.append("\n命中文档[").append(document.getValue()).append("]切分如下:\n");
-        i = 1;
-        for(String item : documentTerms){
-            explain.append("\t").append(i++).append(". ").append(item).append("\n");
-        }
-        explain.append("\n评分过程如下:\n");
-        int score = 0;
-        List<Integer> sections = new ArrayList<>();
-        i = 1;
-        if(documentTerms.size() < query.getKeyWordTerms().size()){
-            for(String documentTerm : documentTerms){
-                if(query.getKeyWordTerms().contains(documentTerm)){
-                    score += documentTerm.length();
-                    sections.add(documentTerm.length());
-                    explain.append("\tscorer ").append(i++).append(". ").append(documentTerm).append(" --> ").append(documentTerm.length()).append("\n");
-                }
-            }
-        }else{
-            for(String keywordTerm : query.getKeyWordTerms()){
-                if(documentTerms.contains(keywordTerm)){
-                    score += keywordTerm.length();
-                    sections.add(keywordTerm.length());
-                    explain.append("\tscorer ").append(i++).append(". ").append(keywordTerm).append(" --> ").append(keywordTerm.length()).append("\n");
-                }
-            }
-        }
-        keyWords = keyWords.trim().toLowerCase();
-        if(keyWords.equals(document.getValue().trim().toLowerCase())
-                || normalize(keyWords).equals(normalize(document.getValue()))){
-            score += document.getValue().length();
-            sections.add(document.getValue().length());
-            explain.append("\tscorer ").append(i++).append(". exactly the same --> ").append(document.getValue().length()).append("\n");
-        }
-        boolean notContainChinese = notContainChinese(keyWords);
-        if(notContainChinese && !query.hasNgramPinYin()){
-            int delta = keyWords.length()-document.getValue().length();
-            if(delta != 0){
-                score += delta;
-                sections.add(delta);
-                explain.append("\tscorer ").append(i++).append(". just for non-chinese search --> ").append(keyWords).append(" and ").append(document.getValue()).append(" 's length delta: ").append(" ").append(keyWords.length()).append("-").append(document.getValue().length()).append(" = ").append(delta).append("\n");
-            }
-        }
-        if(notContainChinese){
-            String chineseValue = extractChinese(document.getValue());
-            String acronym = getAcronymPinYin(chineseValue);
-            String full = getFullPinYin(chineseValue);
-            if(keyWords.equals(acronym)) {
-                score += keyWords.length();
-                sections.add(keyWords.length());
-                explain.append("\tscorer ").append(i++).append(". just for pinyin search --> ").append(keyWords).append(" == ").append(acronym).append(" ").append(keyWords.length()).append("\n");
-            }
-            if(keyWords.equals(full)) {
-                score += keyWords.length();
-                sections.add(keyWords.length());
-                explain.append("\tscorer ").append(i++).append(". just for pinyin search --> ").append(keyWords).append(" == ").append(full).append(" ").append(keyWords.length()).append("\n");
-            }
-        }
-        explain.append("\n\t").append("total score: ").append(score).append(" <-- ").append(sections).append("\n\n");
-        return explain.toString();
     }
 
     public SearchResult search(String keyWords, int topN){
@@ -616,32 +498,27 @@ public class ShortTextSearcher {
         LOGGER.info("查询结构: {} {}", query.getKeyWordTerms(), identity);
 
         start = System.currentTimeMillis();
-        Map<Integer, AtomicInteger> hits = new ConcurrentHashMap<>();
+        Map<String, AtomicInteger> hits = new ConcurrentHashMap<>();
         // collect and init score doc
         query.getKeyWordTerms().parallelStream().forEach(keywordTerm -> {
             Set<Integer> indexIds = INVERTED_INDEX.get(keywordTerm);
             if(indexIds != null){
-                Set<Integer> deletedIndexIds = new HashSet<Integer>();
+                Set<Integer> deletedIndexIds = new HashSet<>();
                 for(int indexId : indexIds){
-                    Integer documentId = INDEX_TO_DOCUMENT.get(indexId);
+                    String documentId = INDEX_TO_DOCUMENT.get(indexId);
                     if(documentId == null){
                         deletedIndexIds.add(indexId);
                         continue;
                     }
-                    Document document = DOCUMENT.get(documentId);
-                    if(document != null){
-                        hits.putIfAbsent(documentId, new AtomicInteger());
-                        hits.get(documentId).addAndGet(keywordTerm.length());
-                    }else{
-                        LOGGER.error("没有ID为: {} 的文档 {}", documentId, identity);
-                    }
+                    hits.putIfAbsent(documentId, new AtomicInteger());
+                    hits.get(documentId).addAndGet(keywordTerm.length());
                 }
                 indexIds.removeAll(deletedIndexIds);
             }
         });
         int limitedDocCount = topN*10 < 1000 ? 1000 : topN*10;
         // limit doc
-        Map<Integer, AtomicInteger> limitedDocuments = new ConcurrentHashMap<>();
+        Map<String, AtomicInteger> limitedDocuments = new ConcurrentHashMap<>();
         hits.entrySet()
                 .parallelStream()
                 .sorted((a,b)->b.getValue().intValue()-a.getValue().intValue())
@@ -653,38 +530,16 @@ public class ShortTextSearcher {
             maxSearchTime.set(cost);
         }
         LOGGER.info("{} 搜索耗时: {} {}", cost, TimeUtils.getTimeDes(cost), identity);
-        LOGGER.info("搜索到的结果文档数: {}, 总的文档数: {}, 搜索结果占总文档的比例: {} %, 限制后的搜索结果数: {}, 限制后的搜索结果占总文档的比例: {} % {} ", hits.size(), DOCUMENT.size(), hits.size()/(float) DOCUMENT.size()*100, limitedDocuments.size(), limitedDocuments.size()/(float) DOCUMENT.size()*100, identity);
+        LOGGER.info("搜索到的结果文档数: {}, 限制后的搜索结果数: {}, {} ",
+                hits.size(), limitedDocuments.size(), identity);
         start = System.currentTimeMillis();
         boolean notContainChinese = notContainChinese(keyWords);
         String finalKeyWords = keyWords.trim().toLowerCase();
         // final score doc
-        Map<Integer, Integer> scores = new ConcurrentHashMap<>();
+        Map<String, Integer> scores = new ConcurrentHashMap<>();
         limitedDocuments.entrySet().parallelStream().forEach(e->{
-            int documentId = e.getKey();
+            String documentId = e.getKey();
             int score = e.getValue().get();
-            Document doc = DOCUMENT.get(documentId);
-            String value = doc.getValue();
-            if(finalKeyWords.equals(value.trim().toLowerCase())
-                    || normalize(finalKeyWords).equals(normalize(value))){
-                score += value.length();
-            }
-            if(notContainChinese && !query.hasNgramPinYin()){
-                int delta = finalKeyWords.length()-value.length();
-                if(delta != 0){
-                    score += delta;
-                }
-            }
-            if(notContainChinese){
-                String chineseValue = extractChinese(value);
-                String acronym = getAcronymPinYin(chineseValue);
-                String full = getFullPinYin(chineseValue);
-                if(finalKeyWords.equals(acronym)) {
-                    score += finalKeyWords.length();
-                }
-                if(finalKeyWords.equals(full)) {
-                    score += finalKeyWords.length();
-                }
-            }
             scores.put(documentId, score);
         });
         cost = System.currentTimeMillis()-start;
@@ -696,13 +551,14 @@ public class ShortTextSearcher {
         start = System.currentTimeMillis();
         // sort and limit doc
         List<Document> result = scores.entrySet().parallelStream().map(e->{
-            Document doc = DOCUMENT.get(e.getKey()).clone();
+            Document doc = new Document();
+            doc.setId(e.getKey());
             doc.setScore(e.getValue().intValue());
             return doc;
         }).sorted((a,b)->{
             int r = b.getScore()-a.getScore();
             if(r == 0){
-                r = Long.valueOf(a.getId()).compareTo(Long.valueOf(b.getId()));
+                r = a.getId().compareTo(b.getId());
             }
             return r;
         }).limit(topN).collect(Collectors.toList());
@@ -723,7 +579,14 @@ public class ShortTextSearcher {
             }
             LOGGER.info("{} 高亮耗时: {} {}", cost, TimeUtils.getTimeDes(cost), identity);
         }
-
+        Connection con = MySQLUtils.getConnection();
+        result.parallelStream().forEach(i->{
+            String value = VisitorSource.get(con, i.getId());
+            if(StringUtils.isNotBlank(value)){
+                i.setValue(value);
+            }
+        });
+        MySQLUtils.close(con);
         searchResult.setDocuments(result);
         currentProcessingSearchCount.decrementAndGet();
         if(cacheEnabled){
@@ -740,6 +603,9 @@ public class ShortTextSearcher {
 
     public void highlight(Document document, String keyWords, List<String> keyWordTerms){
         String value = document.getValue();
+        if(StringUtils.isBlank(value)){
+            return;
+        }
         if(value.contains(keyWords)){
             document.setValue(value.replace(keyWords, PRE + keyWords + SUF));
             return;
@@ -771,7 +637,7 @@ public class ShortTextSearcher {
         indexTotalCost.addAndGet(System.currentTimeMillis()-start);
     }
 
-    public void deleteIndex(int documentId){
+    public void deleteIndex(String documentId){
         if(deleteOldIndexIfExist(documentId)){
             LOGGER.debug("文档索引删除成功, documentId: {}", documentId);
         }else{
@@ -786,25 +652,24 @@ public class ShortTextSearcher {
     }
 
     private void indexSingle(Document document){
-        deleteOldIndexIfExist(document.getId());
-        int indexId = indexIdGenerator.incrementAndGet();
+        Integer indexId = DOCUMENT_TO_INDEX.get(document.getId());
+        if(indexId == null) {
+            indexId = indexIdGenerator.incrementAndGet();
+        }
         List<String> terms = tokenize(document.getValue());
-        document.addTerms(terms);
         for(String term : terms){
             INVERTED_INDEX.putIfAbsent(term, Collections.newSetFromMap(new ConcurrentHashMap<>()));
             INVERTED_INDEX.get(term).add(indexId);
         }
         INDEX_TO_DOCUMENT.put(indexId, document.getId());
         DOCUMENT_TO_INDEX.put(document.getId(), indexId);
-        DOCUMENT.put(document.getId(), document);
     }
 
-    private boolean deleteOldIndexIfExist(int documentId){
+    private boolean deleteOldIndexIfExist(String documentId){
         Integer indexId = DOCUMENT_TO_INDEX.get(documentId);
         if(indexId != null){
             INDEX_TO_DOCUMENT.remove(indexId);
             DOCUMENT_TO_INDEX.remove(documentId);
-            DOCUMENT.remove(documentId);
             LOGGER.debug("删除文档索引, documentId: {}", documentId);
             return true;
         }
@@ -826,7 +691,7 @@ public class ShortTextSearcher {
     }
 
     public List<String> tokenize(String text){
-        return tokenize(text, true);
+        return tokenize(text, pinyinEnable);
     }
 
     public boolean isEnglish(String text){
@@ -897,16 +762,44 @@ public class ShortTextSearcher {
             return Collections.EMPTY_LIST;
         }
         List<String> tokens = new ArrayList<>();
-        // n gram
-        int nGramMax = text.length();
-        if(nGramMax > maxNgram){
-            nGramMax = maxNgram;
-        }
-        for(int i=1; i<=nGramMax; i++){
-            for(int j=0; j<text.length()-i+1; j++){
-                if(text.length() - j >= i){
-                    String token = text.substring(j, j+i);
-                    addWithPinyin(tokens, token, generatePinyin);
+        if(text.contains(",") && text.split(",").length == 2){
+            String[] attr = text.split(",");
+            int nGramMax = attr[0].length();
+            if (nGramMax > maxNgram) {
+                nGramMax = maxNgram;
+            }
+            for (int i = 3; i <= nGramMax; i++) {
+                for (int j = 0; j < text.length() - i + 1; j++) {
+                    if (text.length() - j >= i) {
+                        String token = text.substring(j, j + i);
+                        addWithPinyin(tokens, token, generatePinyin);
+                    }
+                }
+            }
+            nGramMax = attr[1].length();
+            if (nGramMax > maxNgram) {
+                nGramMax = maxNgram;
+            }
+            for (int i = 1; i <= nGramMax; i++) {
+                for (int j = 0; j < text.length() - i + 1; j++) {
+                    if (text.length() - j >= i) {
+                        String token = text.substring(j, j + i);
+                        addWithPinyin(tokens, token, generatePinyin);
+                    }
+                }
+            }
+        }else {
+            // n gram
+            int nGramMax = text.length();
+            if (nGramMax > maxNgram) {
+                nGramMax = maxNgram;
+            }
+            for (int i = 1; i <= nGramMax; i++) {
+                for (int j = 0; j < text.length() - i + 1; j++) {
+                    if (text.length() - j >= i) {
+                        String token = text.substring(j, j + i);
+                        addWithPinyin(tokens, token, generatePinyin);
+                    }
                 }
             }
         }
@@ -1128,15 +1021,5 @@ public class ShortTextSearcher {
                 factorizedPinYinList.add(fullPinYin.substring(0, initialLetterIdx - 1));
             }
         }
-    }
-
-    public static void main(String[] args) {
-        ShortTextSearcher shortTextSearcher = new ShortTextSearcher(3);
-        shortTextSearcher.index(ShortTextResource.loadShortText());
-
-        AtomicInteger i = new AtomicInteger();
-        shortTextSearcher.search("阿里", 500).getDocuments().forEach(doc -> System.out.println(i.incrementAndGet()+". "+doc.getValue()+" "+" ("+doc.getScore()+")"));
-
-        System.out.println(shortTextSearcher.getFullPinYin("儿女"));
     }
 }
