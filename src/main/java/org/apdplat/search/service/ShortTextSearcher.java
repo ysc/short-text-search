@@ -244,11 +244,17 @@ public class ShortTextSearcher {
     }
 
     public String getKeyAndHitCount(){
-        return cache.getKeyAndHitCount();
+        if(cacheEnabled) {
+            return cache.getKeyAndHitCount();
+        }
+        return "";
     }
 
     public String getCacheStatus(){
-        return cache.getStatus();
+        if(cacheEnabled) {
+            return cache.getStatus();
+        }
+        return "";
     }
 
     public String getSearchStatus(){
