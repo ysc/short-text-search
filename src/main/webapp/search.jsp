@@ -122,13 +122,14 @@
                 json.append(",\n\"searchStatus\":\n\"");
                 json.append(searchStatus.replace("\n", "; "));
             }
+            json.append("\"");
         }
-        json.append("\",\n\"result\":\n[");
+        json.append(",\n\"result\":\n[");
         for (Document document : documents) {
             json.append("{")
-                    .append("\"id\":")
+                    .append("\"id\":\"")
                     .append(document.getId())
-                    .append(",")
+                    .append("\",")
                     .append("\"value\":\"")
                     .append(document.getValue())
                     .append("\",")
