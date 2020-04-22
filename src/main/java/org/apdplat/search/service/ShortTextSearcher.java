@@ -444,6 +444,9 @@ public class ShortTextSearcher {
         return LOGGER;
     }
     public SearchResult search(String keyWords, int topN, boolean highlight){
+        return search(keyWords, topN, highlight, true);
+    }
+    public SearchResult search(String keyWords, int topN, boolean highlight, boolean detail){
         if(searchHistories.size() > 1000){
             searchHistories.clear();
         }
@@ -579,14 +582,16 @@ public class ShortTextSearcher {
             }
             LOGGER.info("{} 高亮耗时: {} {}", cost, TimeUtils.getTimeDes(cost), identity);
         }
-        Connection con = MySQLUtils.getConnection();
-        result.parallelStream().forEach(i->{
-            String value = VisitorSource.get(con, i.getId());
-            if(StringUtils.isNotBlank(value)){
-                i.setValue(value);
-            }
-        });
-        MySQLUtils.close(con);
+        if(detail) {
+            Connection con = MySQLUtils.getConnection();
+            result.parallelStream().forEach(i -> {
+                String value = VisitorSource.get(con, i.getId());
+                if (StringUtils.isNotBlank(value)) {
+                    i.setValue(value);
+                }
+            });
+            MySQLUtils.close(con);
+        }
         searchResult.setDocuments(result);
         currentProcessingSearchCount.decrementAndGet();
         if(cacheEnabled){

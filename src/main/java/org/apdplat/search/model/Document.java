@@ -82,6 +82,6 @@ public class Document implements Comparable{
     }
 
     public static void main(String[] args) {
-        System.out.println(URLEncoder.encode("晓宇"));
+        System.out.println(URLEncoder.encode("晓宇12345ysc"));
     }
 }

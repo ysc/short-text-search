@@ -14,6 +14,7 @@
 <%@ page import="java.net.URLEncoder" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%
+    boolean detail = "true".equals(request.getParameter("detail"));
     boolean status = "true".equals(request.getParameter("status"));
     ShortTextSearcher shortTextSearcher = SearchService.getShortTextSearcher();
     if(shortTextSearcher == null){
@@ -31,7 +32,7 @@
     }
     if("html".equals(request.getParameter("type"))) {
         long start = System.currentTimeMillis();
-        SearchResult searchResult = shortTextSearcher.search(keyWords, topN, highlight);
+        SearchResult searchResult = shortTextSearcher.search(keyWords, topN, highlight, detail);
         List<Document> documents = searchResult.getDocuments();
         long cost = System.currentTimeMillis() - start;
         shortTextSearcher.getLogger().info("{} 搜索接口总耗时: {} {}", cost, TimeUtils.getTimeDes(cost), searchResult.getIdentity());
