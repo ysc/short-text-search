@@ -7,6 +7,7 @@
 --%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%
+    boolean detail = "true".equals(request.getParameter("detail"));
     boolean highlight = !"false".equals(request.getParameter("highlight"));
     String keyWords = request.getParameter("keyWords") == null ? "深圳万科" : request.getParameter("keyWords");
     if("true".equals(request.getParameter("refresh"))){
@@ -47,7 +48,7 @@
                 document.getElementById("keyWords").value = keyWords;
             }
             var topN = document.getElementById("topN").value;
-            var url = contextPath+"/search.jsp?status=true&type=html&topN="+topN+"&keyWords="+encodeURIComponent(keyWords)+"&maxNgram=<%=maxNgram%>"+"&highlight=<%=highlight%>";
+            var url = contextPath+"/search.jsp?status=true&type=html&topN="+topN+"&keyWords="+encodeURIComponent(keyWords)+"&maxNgram=<%=maxNgram%>"+"&highlight=<%=highlight%>"+"&detail=<%=detail%>";
             if(lastUrl == url){
                 searching = false;
                 return;
@@ -65,7 +66,7 @@
         function refresh(){
             var keyWords = document.getElementById("keyWords").value;
             var topN = document.getElementById("topN").value;
-            var url = contextPath+"/index.jsp?topN="+topN+"&keyWords="+keyWords+"&highlight=<%=highlight%>";
+            var url = contextPath+"/index.jsp?topN="+topN+"&keyWords="+keyWords+"&highlight=<%=highlight%>"+"&detail=<%=detail%>";
             location.href = url;
         }
     </script>
@@ -73,7 +74,7 @@
 <body onload="search();">
 <p>
     展示结果条数: <input id="topN" value="<%=topN%>" onkeyup="search();"><br/>
-    输入搜索词条: <input id="keyWords" value="<%=keyWords%>" size="80" onkeyup="search();"> <font color="red">使用大写字母进行拼音首字母搜索, 如 深圳万科: SZWK<br/></font>
+    输入搜索词条: <input id="keyWords" value="<%=keyWords%>" size="80" onkeyup="search();">
 </p>
 <!--
 <h3>

@@ -1,2 +1,6 @@
 
 #线上配置, 会覆盖conf.txt
+search.word.length.limit=11
+maxNgram=3
+cache.enabled=false
+pinyin.enabled=false

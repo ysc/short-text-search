@@ -14,6 +14,7 @@
 <%@ page import="java.net.URLEncoder" %>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%
+    boolean detail = "true".equals(request.getParameter("detail"));
     boolean status = "true".equals(request.getParameter("status"));
     ShortTextSearcher shortTextSearcher = SearchService.getShortTextSearcher();
     if(shortTextSearcher == null){
@@ -23,11 +24,6 @@
     boolean highlight = "true".equals(request.getParameter("highlight"));
     String keyWords = request.getParameter("keyWords") == null ? "深圳万科" : request.getParameter("keyWords");
     String id = request.getParameter("id");
-    if("true".equals(request.getParameter("explain")) && id != null){
-        String explain = shortTextSearcher.explain(keyWords, Integer.parseInt(id)).replace("\n", "<br/>").replace("\t", "&nbsp&nbsp&nbsp&nbsp");
-        out.println(explain);
-        return;
-    }
     int topN = 100;
     try{
         topN = Integer.parseInt(request.getParameter("topN"));
@@ -36,7 +32,7 @@
     }
     if("html".equals(request.getParameter("type"))) {
         long start = System.currentTimeMillis();
-        SearchResult searchResult = shortTextSearcher.search(keyWords, topN, highlight);
+        SearchResult searchResult = shortTextSearcher.search(keyWords, topN, highlight, detail);
         List<Document> documents = searchResult.getDocuments();
         long cost = System.currentTimeMillis() - start;
         shortTextSearcher.getLogger().info("{} 搜索接口总耗时: {} {}", cost, TimeUtils.getTimeDes(cost), searchResult.getIdentity());
@@ -92,7 +88,7 @@
         response.setContentType("application/json;charset=UTF-8");
         response.setHeader("Access-Control-Allow-Origin", "*");
         long start = System.currentTimeMillis();
-        SearchResult searchResult = shortTextSearcher.search(keyWords, topN, highlight);
+        SearchResult searchResult = shortTextSearcher.search(keyWords, topN, highlight, detail);
         List<Document> documents = searchResult.getDocuments();
         long cost = System.currentTimeMillis() - start;
         shortTextSearcher.getLogger().info("{} 搜索接口总耗时: {} {}", cost, TimeUtils.getTimeDes(cost), searchResult.getIdentity());
@@ -126,13 +122,14 @@
                 json.append(",\n\"searchStatus\":\n\"");
                 json.append(searchStatus.replace("\n", "; "));
             }
+            json.append("\"");
         }
-        json.append("\",\n\"result\":\n[");
+        json.append(",\n\"result\":\n[");
         for (Document document : documents) {
             json.append("{")
-                    .append("\"id\":")
+                    .append("\"id\":\"")
                     .append(document.getId())
-                    .append(",")
+                    .append("\",")
                     .append("\"value\":\"")
                     .append(document.getValue())
                     .append("\",")
